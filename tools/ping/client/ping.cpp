@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2014-2016,  Arizona Board of Regents.
+ * Copyright (c) 2014-2015,  Arizona Board of Regents.
  *
  * This file is part of ndn-tools (Named Data Networking Essential Tools).
  * See AUTHORS.md for complete list of ndn-tools authors and contributors.
@@ -18,7 +18,6 @@
  *
  * @author: Jerald Paul Abraham <jeraldabraham@email.arizona.edu>
  * @author: Eric Newberry <enewberry@email.arizona.edu>
- * @author: Teng Liang <philoliang@email.arizona.edu>
  */
 
 #include "ping.hpp"
@@ -26,7 +25,7 @@
 namespace ndn {
 namespace ping {
 namespace client {
-
+int janela;
 Ping::Ping(Face& face, const Options& options)
   : m_options(options)
   , m_nSent(0)
@@ -36,6 +35,7 @@ Ping::Ping(Face& face, const Options& options)
   , m_scheduler(m_face.getIoService())
   , m_nextPingEvent(m_scheduler)
 {
+janela=m_options.nPings;
   if (m_options.shouldGenerateRandomSeq) {
     m_nextSeq = random::generateWord64();
   }
@@ -64,10 +64,8 @@ Ping::performPing()
   interest.setMustBeFresh(!m_options.shouldAllowStaleData);
   interest.setInterestLifetime(m_options.timeout);
 
-  auto now = time::steady_clock::now();
   m_face.expressInterest(interest,
-                         bind(&Ping::onData, this, _1, _2, m_nextSeq, now),
-                         bind(&Ping::onNack, this, _1, _2, m_nextSeq, now),
+                         bind(&Ping::onData, this, _1, _2, m_nextSeq, time::steady_clock::now()),
                          bind(&Ping::onTimeout, this, _1, m_nextSeq));
 
   ++m_nSent;
@@ -83,27 +81,16 @@ Ping::performPing()
 }
 
 void
-Ping::onData(const Interest& interest,
-             const Data& data,
-             uint64_t seq,
-             const time::steady_clock::TimePoint& sendTime)
+Ping::onData(const Interest& interest, Data& data, uint64_t seq, const time::steady_clock::TimePoint& sendTime)
 {
   time::nanoseconds rtt = time::steady_clock::now() - sendTime;
 
-  afterData(seq, rtt);
-
-  finish();
+  afterResponse(seq, rtt);
+janela++; //Expands the window(Number of "ping packets") when data arrive successfully
+std::cout << "Data recebida com sucesso, expandindo janela \n Tamanho da Janela:"<< janela <<" \n";
+if(m_nSent> 0){
+  m_nSent--;
 }
-
-void
-Ping::onNack(const Interest& interest,
-             const lp::Nack& nack,
-             uint64_t seq,
-             const time::steady_clock::TimePoint& sendTime)
-{
-  time::nanoseconds rtt = time::steady_clock::now() - sendTime;
-
-  afterNack(seq, rtt, nack.getHeader());
 
   finish();
 }
@@ -112,7 +99,11 @@ void
 Ping::onTimeout(const Interest& interest, uint64_t seq)
 {
   afterTimeout(seq);
-
+if(m_nSent > 0){
+m_nSent--;
+ }
+janela--;
+ std::cout << "Timeout aconteceu,reduzindo a janela \n Tamanho da Janela:"<< janela <<" \n";
   finish();
 }
 
