@@ -102,7 +102,6 @@ Ping::onTimeout(const Interest& interest, uint64_t seq)
 if(m_nSent > 0){
 m_nSent--;
  }
-<<<<<<< HEAD
 if(janela>m_nSent+1){
 janela--;
  std::cout << "Timeout aconteceu,reduzindo a janela \n Tamanho da Janela:"<< janela <<" \n";
@@ -111,8 +110,6 @@ janela--;
 }
 
 finish();
-=======
->>>>>>> 7cad099d328b71ad8668b31f9cee741f3b793413
 }
 
 void
