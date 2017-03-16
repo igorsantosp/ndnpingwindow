@@ -72,7 +72,7 @@ Ping::performPing()
   ++m_nextSeq;
   ++m_nOutstanding;
 
-  if ((m_options.nPings < 0) || (m_nSent < m_options.nPings)) {
+  if ((m_options.nPings < 0) || (m_nSent < janela)) {
     m_nextPingEvent = m_scheduler.scheduleEvent(m_options.interval, bind(&Ping::performPing, this));
   }
   else {
@@ -102,9 +102,17 @@ Ping::onTimeout(const Interest& interest, uint64_t seq)
 if(m_nSent > 0){
 m_nSent--;
  }
+<<<<<<< HEAD
+if(janela>m_nSent+1){
 janela--;
  std::cout << "Timeout aconteceu,reduzindo a janela \n Tamanho da Janela:"<< janela <<" \n";
-  finish();
+  }else{
+ std::cout << "Timeout aconteceu, janela no tamanho 1, mantendo a janela"<< janela <<" \n";
+}
+
+finish();
+=======
+>>>>>>> 7cad099d328b71ad8668b31f9cee741f3b793413
 }
 
 void
