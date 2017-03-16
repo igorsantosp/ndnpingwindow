@@ -26,6 +26,7 @@ namespace ndn {
 namespace ping {
 namespace client {
 int janela;
+int inFlight=0;
 Ping::Ping(Face& face, const Options& options)
   : m_options(options)
   , m_nSent(0)
@@ -35,7 +36,7 @@ Ping::Ping(Face& face, const Options& options)
   , m_scheduler(m_face.getIoService())
   , m_nextPingEvent(m_scheduler)
 {
-janela=m_options.nPings;
+  janela=m_options.nPings;
   if (m_options.shouldGenerateRandomSeq) {
     m_nextSeq = random::generateWord64();
   }
@@ -72,9 +73,10 @@ Ping::performPing()
   ++m_nextSeq;
   ++m_nOutstanding;
 
-  if ((m_options.nPings < 0) || (m_nSent < janela)) {
+  if ((m_options.nPings < 0) || (inFlight < janela)) {
     m_nextPingEvent = m_scheduler.scheduleEvent(m_options.interval, bind(&Ping::performPing, this));
-  }
+++inFlight;  
+}
   else {
     finish();
   }
@@ -86,10 +88,10 @@ Ping::onData(const Interest& interest, Data& data, uint64_t seq, const time::ste
   time::nanoseconds rtt = time::steady_clock::now() - sendTime;
 
   afterResponse(seq, rtt);
-janela++; //Expands the window(Number of "ping packets") when data arrive successfully
-std::cout << "Data recebida com sucesso, expandindo janela \n Tamanho da Janela:"<< janela <<" \n";
-if(m_nSent> 0){
-  m_nSent--;
+ janela++; //Expands the window(Number of "ping packets") when data arrive successfully
+ std::cout << "Data recebida com sucesso, expandindo janela \n Tamanho da Janela:"<< janela <<" \n";
+if(inFlight > 0){
+ inFlight--;
 }
 
   finish();
@@ -99,11 +101,11 @@ void
 Ping::onTimeout(const Interest& interest, uint64_t seq)
 {
   afterTimeout(seq);
-if(m_nSent > 0){
-m_nSent--;
+if(inFlight > 0){
+ inFlight--;
  }
-if(janela>m_nSent+1){
-janela--;
+if(janela>inFlight+1){
+ janela--;
  std::cout << "Timeout aconteceu,reduzindo a janela \n Tamanho da Janela:"<< janela <<" \n";
   }else{
  std::cout << "Timeout aconteceu, janela no tamanho 1, mantendo a janela"<< janela <<" \n";
